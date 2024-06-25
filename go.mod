@@ -1,4 +1,4 @@
-module my-app
+module aller-navi
 
 go 1.21
 
