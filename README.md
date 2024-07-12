@@ -20,6 +20,9 @@ myenv\Scripts\activate
 # pipをアップグレード
 python -m pip install --upgrade pip
 
+# 依存関係のインストール
+pip install -r requirements.txt
+
 # pipenvのインストール
 pip install pipenv
 
