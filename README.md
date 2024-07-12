@@ -1,8 +1,33 @@
 # aller-navi
 
-## used
+## 開発環境構築
+### Tkinterのインストール
+```bash
+brew install python-tk@3.12
 ```
-wails dev
+
+### pipenvのインストール
+```bash
+# venvのインストール
+python -m venv venv
+
+# 仮想環境のアクティベート(Mac)
+source venv/bin/activate
+
+# 仮想環境のアクティベート(Windows)
+myenv\Scripts\activate
+
+# pipをアップグレード
+python -m pip install --upgrade pip
+
+# 依存関係のインストール
+pip install -r requirements.txt
+
+# pipenvのインストール
+pip install pipenv
+
+# 仮想環境のアクティベート
+pipenv shell
 ```
 
 ## license

@@ -17,13 +17,6 @@
 # Dependency directories (remove the comment below to include it)
 # vendor/
 
-# Go workspace file
-go.work
-go.work.sum
-
-# Go wails
-build/bin
-node_modules
-frontend/dist
-frontend/build
-frontend/node_modules
+# python
+venv/
+.mypy_cache/
