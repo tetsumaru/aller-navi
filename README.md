@@ -1,10 +1,5 @@
 # aller-navi
 
-## used
-```
-wails dev
-```
-
 ## license
 This project is licensed under the Creative Commons Attribution-NonCommercial 4.0 International License. You can view the full license [here](https://creativecommons.org/licenses/by-nc/4.0/legalcode).
 
