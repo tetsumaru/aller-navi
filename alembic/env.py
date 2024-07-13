@@ -6,16 +6,16 @@ from sqlalchemy import engine_from_config, pool
 
 from alembic import context
 
-# プロジェクトのルートディレクトリをPYTHONPATHに追加
-sys.path.insert(
-    0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
-)
-
 # SQLAlchemyのモデルをインポート
 from app.models import Base  # インポートパスを修正
 
 # Alembic Config objectを取得
 config = context.config
+
+# プロジェクトのルートディレクトリをPYTHONPATHに追加
+sys.path.insert(
+    0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+)
 
 # ロギング設定
 if config.config_file_name is not None:
