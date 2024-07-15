@@ -1,28 +1,48 @@
-# app/main_view.py
-
+import csv
 import tkinter as tk
+from tkinter import filedialog, messagebox
 
-from app.controller import Controller
+from sqlalchemy.dialects.sqlite import insert
 
-
-class MainView(tk.Tk):
-    def __init__(self, controller):
-        super().__init__()
-
-        self.controller = controller
-        self.title("Main View")
-        self.geometry("800x600")
-
-        self.label = tk.Label(self, text="Hello, Tkinter!")
-        self.label.pack(pady=20)
-
-        self.button = tk.Button(
-            self, text="Click Me", command=self.controller.on_button_click
-        )
-        self.button.pack(pady=20)
+from app.infrastructure.database.sqlite_handler import (
+    recipe_ingredients_map,
+    session,
+)
 
 
-if __name__ == "__main__":
-    controller = Controller()
-    app = MainView(controller)
-    app.mainloop()
+def load_csv_to_db(file_path: str) -> None:
+    """Load data from a CSV file into the database."""
+    with open(file_path, newline='', encoding='utf-8') as csvfile:
+        reader = csv.DictReader(csvfile)
+        for row in reader:
+            insert_stmt = insert(recipe_ingredients_map).values(
+                recipe_name=row['recipe_name'],
+                ingredient_name=row['ingredient_name'],
+            )
+            session.execute(insert_stmt)
+        session.commit()
+
+
+def select_file() -> None:
+    """Open a file dialog to select a CSV file and load its data into the database."""
+    file_path = filedialog.askopenfilename(
+        title="Select CSV file", filetypes=[("CSV files", "*.csv")]
+    )
+    if file_path:
+        try:
+            load_csv_to_db(file_path)
+            messagebox.showinfo("Success", "Data loaded successfully!")
+        except Exception as e:
+            messagebox.showerror("Error", f"Failed to load data: {e}")
+
+
+# Tkinter GUIの設定
+root = tk.Tk()
+root.title("CSV Importer")
+
+# ファイル選択ボタン
+button = tk.Button(root, text="Select CSV File", command=select_file)
+button.pack(pady=20)
+
+# メインループ
+root.mainloop()

@@ -1,24 +1,24 @@
-# app/models.py
+# # app/models.py
 
-from sqlalchemy import Column, Integer, String, create_engine
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import sessionmaker
+# from sqlalchemy import Column, Integer, String, create_engine
+# from sqlalchemy.ext.declarative import declarative_base
+# from sqlalchemy.orm import sessionmaker
 
-Base = declarative_base()
-
-
-class ExampleModel(Base):
-    __tablename__ = 'examples'
-
-    id = Column(Integer, primary_key=True)
-    name = Column(String, nullable=False)
+# Base = declarative_base()
 
 
-# データベースの設定
-DATABASE_URL = "sqlite:///example.db"
+# class ExampleModel(Base):
+#     __tablename__ = 'examples'
 
-engine = create_engine(DATABASE_URL)
-SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+#     id = Column(Integer, primary_key=True)
+#     name = Column(String, nullable=False)
 
-# テーブルを作成
-Base.metadata.create_all(bind=engine)
+
+# # データベースの設定
+# DATABASE_URL = "sqlite:///example.db"
+
+# engine = create_engine(DATABASE_URL)
+# SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+
+# # テーブルを作成
+# Base.metadata.create_all(bind=engine)
