@@ -1,0 +1,47 @@
+# aller-navi
+
+## 概要
+
+給食・保育園のメニュー PDF にアレルゲン情報をハイライトして返す Google Cloud Functions サービス。
+
+## サービス構成
+
+- **functions/highlight-pdf** — PDF にハイライトと氏名ヘッダーを追加する HTTP Cloud Function
+  - 言語: Go
+  - 外部サービス: Google Cloud Vision API (Document Text Detection)
+  - PDF 操作: pdfcpu (pure Go)
+
+## 開発環境
+
+- Go 1.21+
+- Google Cloud SDK (`gcloud` コマンド)
+- Cloud Vision API が有効な GCP プロジェクト
+
+## コマンド
+
+```bash
+# テスト
+cd functions/highlight-pdf && go test ./...
+
+# ビルド確認
+cd functions/highlight-pdf && go build ./...
+
+# ローカル起動
+cd functions/highlight-pdf && go run ./cmd/main.go
+
+# デプロイ
+gcloud functions deploy highlight-pdf \
+  --runtime go121 \
+  --trigger-http \
+  --allow-unauthenticated \
+  --region asia-northeast1
+```
+
+## ルール
+
+詳細は `rules/` を参照。
+
+- `rules/architecture.md` — 設計方針
+- `rules/api.md` — API 仕様
+- `rules/coding-style.md` — コーディング規約
+- `rules/git.md` — Git ワークフロー
