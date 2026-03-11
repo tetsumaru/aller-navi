@@ -98,17 +98,12 @@ func DetectText(ctx context.Context, pdfBytes []byte) ([]PageInfo, error) {
 	return pages, nil
 }
 
-// extractParagraphText concatenates all word texts in a paragraph.
+// extractParagraphText concatenates all symbol texts in a paragraph.
 func extractParagraphText(para *visionpb.Paragraph) string {
 	var sb strings.Builder
 	for _, word := range para.GetWords() {
 		for _, sym := range word.GetSymbols() {
 			sb.WriteString(sym.GetText())
-			if p := sym.GetProperty(); p != nil {
-				for _, bp := range p.GetDetectedBreak().GetType().Enum() {
-					_ = bp // handle break types if needed
-				}
-			}
 		}
 	}
 	return sb.String()
