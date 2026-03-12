@@ -9,25 +9,25 @@ import (
 	visionpb "cloud.google.com/go/vision/apiv1/visionpb"
 )
 
-// PageInfo holds text blocks detected on a single PDF page.
+// PageInfo は PDF の 1 ページ分の検出テキストブロックを保持します。
 type PageInfo struct {
-	// Width and Height are the rendered image dimensions returned by Vision API (pixels).
+	// Width と Height は Vision API が返すレンダリング済み画像の寸法（ピクセル）です。
 	Width  int32
 	Height int32
 	Blocks []TextBlock
 }
 
-// TextBlock represents a paragraph-level text region with its bounding box
-// in image pixel coordinates (top-left origin, Y-axis downward).
+// TextBlock は段落レベルのテキスト領域とそのバウンディングボックスを表します。
+// 座標は画像ピクセル座標（左上原点、Y 軸下向き）です。
 type TextBlock struct {
 	Text string
-	X1   float64 // left
-	Y1   float64 // top
-	X2   float64 // right
-	Y2   float64 // bottom
+	X1   float64 // 左端
+	Y1   float64 // 上端
+	X2   float64 // 右端
+	Y2   float64 // 下端
 }
 
-// DetectText sends PDF bytes to Cloud Vision API and returns text blocks per page.
+// DetectText は PDF バイト列を Cloud Vision API に送信し、ページごとのテキストブロックを返します。
 func DetectText(ctx context.Context, pdfBytes []byte) ([]PageInfo, error) {
 	client, err := vision.NewImageAnnotatorClient(ctx)
 	if err != nil {
@@ -98,7 +98,7 @@ func DetectText(ctx context.Context, pdfBytes []byte) ([]PageInfo, error) {
 	return pages, nil
 }
 
-// extractParagraphText concatenates all symbol texts in a paragraph.
+// extractParagraphText は段落内の全シンボルテキストを連結して返します。
 func extractParagraphText(para *visionpb.Paragraph) string {
 	var sb strings.Builder
 	for _, word := range para.GetWords() {
@@ -109,7 +109,7 @@ func extractParagraphText(para *visionpb.Paragraph) string {
 	return sb.String()
 }
 
-// polyBounds returns the axis-aligned bounding box of a BoundingPoly.
+// polyBounds は BoundingPoly の軸平行バウンディングボックスを返します。
 func polyBounds(poly *visionpb.BoundingPoly) (x1, y1, x2, y2 float64) {
 	if poly == nil || len(poly.GetVertices()) == 0 {
 		return 0, 0, 0, 0

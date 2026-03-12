@@ -1,5 +1,5 @@
-// Package highlightpdf provides a Cloud Function that highlights allergen-related
-// text in PDF files using Google Cloud Vision API.
+// Package highlightpdf は、Google Cloud Vision API を使用して
+// PDF ファイル内のアレルゲン関連テキストをハイライトする Cloud Function を提供します。
 package highlightpdf
 
 import (

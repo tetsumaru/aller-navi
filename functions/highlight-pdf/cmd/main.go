@@ -1,16 +1,16 @@
-// Command main starts the Cloud Function locally for development.
+// Command main は開発用にローカルで Cloud Function を起動します。
 //
-// Usage:
+// 使い方:
 //
 //	go run ./cmd/main.go
-//	# Then send requests to http://localhost:8080
+//	# その後 http://localhost:8080 にリクエストを送信してください
 package main
 
 import (
 	"log"
 	"os"
 
-	// Import the function package to trigger init() registration.
+	// 関数パッケージをインポートして init() 登録をトリガーする。
 	_ "example.com/aller-navi/highlight-pdf"
 	"github.com/GoogleCloudPlatform/functions-framework-go/funcframework"
 )
