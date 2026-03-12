@@ -4,7 +4,7 @@ go 1.21
 
 require (
 	cloud.google.com/go/firestore v1.14.0
-	cloud.google.com/go/vision/apiv1 v3.2.0+incompatible
+	cloud.google.com/go/vision/apiv1 v1.2.0
 	github.com/GoogleCloudPlatform/functions-framework-go v1.8.1
 	github.com/pdfcpu/pdfcpu v0.8.0
 )
