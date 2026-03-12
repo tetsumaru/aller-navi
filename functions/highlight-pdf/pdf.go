@@ -12,12 +12,12 @@ import (
 	"github.com/pdfcpu/pdfcpu/pkg/pdfcpu/types"
 )
 
-// highlightColor はアレルゲンに一致するテキストブロックに適用する色（黄色）です。
+// highlightColor はハイライトに適用する色（黄色）です。
 var highlightColor = color.SimpleColor{R: 1.0, G: 0.95, B: 0.0}
 
-// ProcessPDF は PDF にアレルゲンのハイライトと氏名ヘッダーを追加します。
+// ProcessPDF は PDF に target 文字列を含むテキストブロックのハイライトを追加します。
 // pages は PDF のページと 1:1 対応している必要があります（インデックス 0 = 1 ページ目）。
-func ProcessPDF(pdfBytes []byte, pages []PageInfo, allergens []string, name string) ([]byte, error) {
+func ProcessPDF(pdfBytes []byte, pages []PageInfo, target string) ([]byte, error) {
 	// PDF の各ページサイズを取得する。
 	dims, err := api.PageDims(bytes.NewReader(pdfBytes), nil)
 	if err != nil {
@@ -43,7 +43,7 @@ func ProcessPDF(pdfBytes []byte, pages []PageInfo, allergens []string, name stri
 		pageNum := pageIdx + 1 // pdfcpu はページ番号が 1 始まり
 
 		for _, block := range page.Blocks {
-			if !containsAny(block.Text, allergens) {
+			if !strings.Contains(block.Text, target) {
 				continue
 			}
 
@@ -79,58 +79,14 @@ func ProcessPDF(pdfBytes []byte, pages []PageInfo, allergens []string, name stri
 		}
 	}
 
-	// 全アノテーションを一括で適用する。
-	result := pdfBytes
-	if len(annotationsMap) > 0 {
-		var buf bytes.Buffer
-		if err := api.AddAnnotationsMap(bytes.NewReader(pdfBytes), &buf, annotationsMap, nil); err != nil {
-			return nil, fmt.Errorf("add annotations: %w", err)
-		}
-		result = buf.Bytes()
-	}
-
-	// 1 ページ目の上部に氏名ヘッダーを追加する。
-	result, err = addNameHeader(result, name)
-	if err != nil {
-		return nil, fmt.Errorf("add name header: %w", err)
-	}
-
-	return result, nil
-}
-
-// addNameHeader は指定した氏名を 1 ページ目の左上に押印します。
-func addNameHeader(pdfBytes []byte, name string) ([]byte, error) {
-	wm, err := api.TextWatermark(
-		name,
-		"fontsize:18, pos:tl, offset:15 -15, fillc:#000000, scale:1 abs, rot:0",
-		true,  // onTop
-		false, // update
-		types.POINTS,
-	)
-	if err != nil {
-		return nil, fmt.Errorf("create text watermark: %w", err)
+	if len(annotationsMap) == 0 {
+		return pdfBytes, nil
 	}
 
 	var buf bytes.Buffer
-	if err := api.AddWatermarks(
-		bytes.NewReader(pdfBytes),
-		&buf,
-		[]string{"1"}, // page 1 only
-		wm,
-		nil,
-	); err != nil {
-		return nil, fmt.Errorf("add watermark: %w", err)
+	if err := api.AddAnnotationsMap(bytes.NewReader(pdfBytes), &buf, annotationsMap, nil); err != nil {
+		return nil, fmt.Errorf("add annotations: %w", err)
 	}
 
 	return buf.Bytes(), nil
-}
-
-// containsAny はテキストにアレルゲン文字列が少なくとも 1 つ含まれているかを返します。
-func containsAny(text string, allergens []string) bool {
-	for _, a := range allergens {
-		if strings.Contains(text, a) {
-			return true
-		}
-	}
-	return false
 }

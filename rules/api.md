@@ -12,23 +12,24 @@ Content-Type: multipart/form-data
 | フィールド | 型 | 必須 | 説明 |
 |---|---|---|---|
 | `file` | ファイル (application/pdf) | ✅ | ハイライト対象の PDF ファイル |
-| `allergens` | JSON 配列 (文字列) | ✅ | ハイライト対象のアレルゲン文字列のリスト |
-| `name` | 文字列 | ✅ | PDF の上部に記載する氏名 |
+| `user_id` | 文字列 | ✅ | Firestore `users/{user_id}` のドキュメント ID |
 
-### allergens の例
-
-```json
-["卵", "乳", "小麦", "えび"]
-```
+ハイライト対象の文字列は Firestore の `users/{user_id}.target` フィールドから取得します。
 
 ### curl の例
 
 ```bash
 curl -X POST https://<REGION>-<PROJECT>.cloudfunctions.net/highlight-pdf \
   -F "file=@menu.pdf" \
-  -F 'allergens=["卵","乳"]' \
-  -F "name=山田 太郎" \
+  -F "user_id=abc123" \
   --output highlighted.pdf
+```
+
+## Firestore スキーマ
+
+```
+users/{user_id}
+  target: string  // この文字列を含むテキストブロックをハイライトする
 ```
 
 ## レスポンス
@@ -42,16 +43,15 @@ Content-Disposition: attachment; filename="highlighted.pdf"
 <PDF バイナリ>
 ```
 
-- 1ページ目上部に氏名が追記されている
-- アレルゲン文字列を含むテキストブロックが黄色でハイライトされている
+- `target` 文字列を含むテキストブロックが黄色でハイライトされている
 
 ### エラー
 
 | ステータス | 説明 |
 |---|---|
-| 400 Bad Request | リクエストパラメータ不正 (ファイル未添付、allergens が不正な JSON 等) |
+| 400 Bad Request | リクエストパラメータ不正 (ファイル未添付、user_id 未指定等) |
 | 405 Method Not Allowed | POST 以外のメソッド |
-| 500 Internal Server Error | Cloud Vision API エラー、PDF 処理エラー |
+| 500 Internal Server Error | Firestore エラー、Cloud Vision API エラー、PDF 処理エラー |
 
 エラーレスポンスボディ:
 ```json
