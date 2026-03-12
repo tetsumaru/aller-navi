@@ -28,8 +28,8 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          if ! git diff --exit-code; then
-            git add functions/highlight-pdf/go.mod functions/highlight-pdf/go.sum
+          git add functions/highlight-pdf/go.mod functions/highlight-pdf/go.sum
+          if ! git diff --cached --exit-code; then
             git commit -m "chore: go mod tidy"
             git push
           fi
