@@ -3,10 +3,10 @@ module example.com/aller-navi/highlight-pdf
 go 1.21
 
 require (
+	cloud.google.com/go/firestore v1.14.0
 	cloud.google.com/go/vision/apiv1 v3.2.0+incompatible
 	github.com/GoogleCloudPlatform/functions-framework-go v1.8.1
 	github.com/pdfcpu/pdfcpu v0.8.0
-	google.golang.org/genproto/googleapis/cloud/vision/v1 v0.0.0-20240311173647-c811ad7063a7
 )
 
 require (

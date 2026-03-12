@@ -23,26 +23,10 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// 氏名を取得する
-	name := r.FormValue("name")
-	if name == "" {
-		writeError(w, http.StatusBadRequest, "name is required")
-		return
-	}
-
-	// アレルゲンリストを取得する
-	allergensJSON := r.FormValue("allergens")
-	if allergensJSON == "" {
-		writeError(w, http.StatusBadRequest, "allergens is required")
-		return
-	}
-	var allergens []string
-	if err := json.Unmarshal([]byte(allergensJSON), &allergens); err != nil {
-		writeError(w, http.StatusBadRequest, fmt.Sprintf("allergens must be a JSON array: %v", err))
-		return
-	}
-	if len(allergens) == 0 {
-		writeError(w, http.StatusBadRequest, "allergens must not be empty")
+	// ユーザー ID を取得する
+	userID := r.FormValue("user_id")
+	if userID == "" {
+		writeError(w, http.StatusBadRequest, "user_id is required")
 		return
 	}
 
@@ -60,9 +44,17 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Firestore からハイライト対象文字列を取得する
+	target, err := GetUserTarget(r.Context(), userID)
+	if err != nil {
+		slog.Error("firestore error", "err", err)
+		writeError(w, http.StatusInternalServerError, fmt.Sprintf("get user target: %v", err))
+		return
+	}
+
 	slog.Info("processing request",
-		"name", name,
-		"allergen_count", len(allergens),
+		"user_id", userID,
+		"target", target,
 		"pdf_size_bytes", len(pdfBytes),
 	)
 
@@ -76,8 +68,8 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 
 	slog.Info("vision detection complete", "page_count", len(pages))
 
-	// PDF を処理する：ハイライトと氏名ヘッダーを追加する
-	result, err := ProcessPDF(pdfBytes, pages, allergens, name)
+	// PDF を処理する：ハイライトを追加する
+	result, err := ProcessPDF(pdfBytes, pages, target)
 	if err != nil {
 		slog.Error("PDF processing error", "err", err)
 		writeError(w, http.StatusInternalServerError, fmt.Sprintf("PDF processing failed: %v", err))

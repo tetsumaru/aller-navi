@@ -6,16 +6,17 @@
 
 ## サービス構成
 
-- **functions/highlight-pdf** — PDF にハイライトと氏名ヘッダーを追加する HTTP Cloud Function
+- **functions/highlight-pdf** — PDF にハイライトを追加する HTTP Cloud Function
   - 言語: Go
-  - 外部サービス: Google Cloud Vision API (Document Text Detection)
+  - 外部サービス: Google Cloud Vision API (Document Text Detection), Cloud Firestore
   - PDF 操作: pdfcpu (pure Go)
+  - ハイライト対象: Firestore `users/{user_id}.target` フィールドの文字列
 
 ## 開発環境
 
 - Go 1.21+
 - Google Cloud SDK (`gcloud` コマンド)
-- Cloud Vision API が有効な GCP プロジェクト
+- Cloud Vision API および Cloud Firestore が有効な GCP プロジェクト
 
 ## コマンド
 
