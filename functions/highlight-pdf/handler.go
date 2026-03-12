@@ -8,9 +8,9 @@ import (
 	"net/http"
 )
 
-const maxUploadSize = 20 << 20 // 20MB
+const maxUploadSize = 20 << 20 // 20MB（アップロード上限サイズ）
 
-// Handler is the Cloud Functions HTTP entry point.
+// Handler は Cloud Functions の HTTP エントリーポイントです。
 func Handler(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		writeError(w, http.StatusMethodNotAllowed, "method not allowed")
@@ -23,14 +23,14 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Parse name
+	// 氏名を取得する
 	name := r.FormValue("name")
 	if name == "" {
 		writeError(w, http.StatusBadRequest, "name is required")
 		return
 	}
 
-	// Parse allergens
+	// アレルゲンリストを取得する
 	allergensJSON := r.FormValue("allergens")
 	if allergensJSON == "" {
 		writeError(w, http.StatusBadRequest, "allergens is required")
@@ -46,7 +46,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Parse PDF file
+	// PDF ファイルを取得する
 	file, _, err := r.FormFile("file")
 	if err != nil {
 		writeError(w, http.StatusBadRequest, fmt.Sprintf("file is required: %v", err))
@@ -66,7 +66,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		"pdf_size_bytes", len(pdfBytes),
 	)
 
-	// Detect text via Cloud Vision
+	// Cloud Vision API でテキストを検出する
 	pages, err := DetectText(r.Context(), pdfBytes)
 	if err != nil {
 		slog.Error("vision API error", "err", err)
@@ -76,7 +76,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 
 	slog.Info("vision detection complete", "page_count", len(pages))
 
-	// Process PDF: add highlights and name header
+	// PDF を処理する：ハイライトと氏名ヘッダーを追加する
 	result, err := ProcessPDF(pdfBytes, pages, allergens, name)
 	if err != nil {
 		slog.Error("PDF processing error", "err", err)
