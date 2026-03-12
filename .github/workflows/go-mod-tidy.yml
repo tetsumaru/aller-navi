@@ -31,5 +31,5 @@ jobs:
           git add functions/highlight-pdf/go.mod functions/highlight-pdf/go.sum
           if ! git diff --cached --exit-code; then
             git commit -m "chore: go mod tidy"
-            git push
+            git push origin HEAD:${{ github.head_ref }}
           fi
