@@ -38,6 +38,11 @@ gcloud functions deploy highlight-pdf \
   --region asia-northeast1
 ```
 
+## PR・コミュニケーション言語
+
+**PR のタイトルおよび本文は必ず日本語で記述すること。**
+詳細フォーマットは `rules/git.md` の「PR の言語」セクションを参照。
+
 ## ルール
 
 詳細は `rules/` を参照。
