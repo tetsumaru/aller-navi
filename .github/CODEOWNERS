@@ -1,0 +1,15 @@
+# CODEOWNERS
+# ファイルやディレクトリごとにレビュー担当者を指定します。
+# 詳細: https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-code-owners
+
+# デフォルトオーナー（全ファイル）
+* @tetsumaru
+
+# Cloud Function 本体
+/functions/ @tetsumaru
+
+# GitHub Actions ワークフロー
+/.github/workflows/ @tetsumaru
+
+# アーキテクチャ・ルール類
+/rules/ @tetsumaru
