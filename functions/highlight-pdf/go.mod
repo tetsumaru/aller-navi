@@ -6,7 +6,7 @@ require (
 	cloud.google.com/go/firestore v1.16.0
 	cloud.google.com/go/vision/v2 v2.9.1
 	github.com/GoogleCloudPlatform/functions-framework-go v1.8.1
-	github.com/pdfcpu/pdfcpu v0.8.0
+	github.com/pdfcpu/pdfcpu v0.11.1
 )
 
 require (
