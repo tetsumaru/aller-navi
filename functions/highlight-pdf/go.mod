@@ -1,6 +1,6 @@
 module example.com/aller-navi/highlight-pdf
 
-go 1.21
+go 1.26
 
 require (
 	cloud.google.com/go/firestore v1.16.0

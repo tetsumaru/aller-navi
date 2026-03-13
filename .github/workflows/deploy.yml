@@ -27,8 +27,8 @@ jobs:
         uses: google-github-actions/deploy-cloud-functions@v3
         with:
           name: highlight-pdf
-          runtime: go121
+          runtime: go126
           region: asia-northeast1
           source_dir: functions/highlight-pdf
           entry_point: HighlightPDF
-          allow_unauthenticated: true
+          ingress_settings: ALLOW_ALL
