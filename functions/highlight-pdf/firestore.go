@@ -3,13 +3,18 @@ package highlightpdf
 import (
 	"context"
 	"fmt"
+	"os"
 
 	"cloud.google.com/go/firestore"
 )
 
 // GetUserTarget は Firestore の users/{userID} ドキュメントから target フィールドを返します。
 func GetUserTarget(ctx context.Context, userID string) (string, error) {
-	client, err := firestore.NewClient(ctx, firestore.DetectProjectID)
+	databaseID := os.Getenv("FIRESTORE_DATABASE_ID")
+	if databaseID == "" {
+		databaseID = "(default)"
+	}
+	client, err := firestore.NewClientWithDatabase(ctx, firestore.DetectProjectID, databaseID)
 	if err != nil {
 		return "", fmt.Errorf("create firestore client: %w", err)
 	}
