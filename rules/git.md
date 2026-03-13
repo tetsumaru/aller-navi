@@ -32,6 +32,13 @@ go build ./...
 gofmt -l .
 ```
 
+## go mod tidy
+
+**`go mod tidy` はローカルで実行しないこと。**
+
+PR を作成すると `.github/workflows/go-mod-tidy.yml` が自動で実行し、差分があればコミットを追加する。
+Claude が手動で `go mod tidy` を実行する必要はない。
+
 ## プルリクエスト
 
 - `main` へのマージは PR 経由

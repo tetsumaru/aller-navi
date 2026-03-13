@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"strings"
 
-	vision "cloud.google.com/go/vision/apiv1"
-	visionpb "cloud.google.com/go/vision/apiv1/visionpb"
+	vision "cloud.google.com/go/vision/v2/apiv1"
+	visionpb "cloud.google.com/go/vision/v2/apiv1/visionpb"
 )
 
 // PageInfo は PDF の 1 ページ分の検出テキストブロックを保持します。
