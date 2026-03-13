@@ -61,7 +61,7 @@ func ProcessPDF(pdfBytes []byte, pages []PageInfo, target string) ([]byte, error
 				"",                   // id
 				0,                    // AnnotationFlags
 				0,                    // borderWidth (no border)
-				model.BorderStyle{},  // borderStyle
+				model.BSSolid,        // borderStyle
 				nil,                  // borderCol (no border)
 				false,                // cloudyBorder
 				0,                    // cloudyBorderIntensity
