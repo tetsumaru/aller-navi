@@ -36,3 +36,24 @@ func GetUserTarget(ctx context.Context, userID string) (string, error) {
 
 	return target, nil
 }
+
+// SetUserTarget は Firestore の users/{userID} ドキュメントの target フィールドを更新します。
+func SetUserTarget(ctx context.Context, userID, target string) error {
+	databaseID := os.Getenv("FIRESTORE_DATABASE_ID")
+	if databaseID == "" {
+		databaseID = "(default)"
+	}
+	client, err := firestore.NewClientWithDatabase(ctx, firestore.DetectProjectID, databaseID)
+	if err != nil {
+		return fmt.Errorf("create firestore client: %w", err)
+	}
+	defer client.Close()
+
+	_, err = client.Collection("users").Doc(userID).Set(ctx, map[string]any{
+		"target": target,
+	})
+	if err != nil {
+		return fmt.Errorf("set user target: %w", err)
+	}
+	return nil
+}

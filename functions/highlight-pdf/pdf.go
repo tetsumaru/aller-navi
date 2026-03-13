@@ -42,8 +42,9 @@ func ProcessPDF(pdfBytes []byte, pages []PageInfo, target string) ([]byte, error
 
 		pageNum := pageIdx + 1 // pdfcpu はページ番号が 1 始まり
 
+		targets := splitTargets(target)
 		for _, block := range page.Blocks {
-			if !strings.Contains(block.Text, target) {
+			if !matchesAnyTarget(block.Text, targets) {
 				continue
 			}
 
@@ -89,4 +90,25 @@ func ProcessPDF(pdfBytes []byte, pages []PageInfo, target string) ([]byte, error
 	}
 
 	return buf.Bytes(), nil
+}
+
+// splitTargets は改行区切りの target 文字列を個別のアレルゲン文字列のスライスに変換します。
+func splitTargets(target string) []string {
+	var result []string
+	for _, t := range strings.Split(target, "\n") {
+		if t = strings.TrimSpace(t); t != "" {
+			result = append(result, t)
+		}
+	}
+	return result
+}
+
+// matchesAnyTarget はテキストブロックがいずれかのアレルゲン文字列を含むか判定します。
+func matchesAnyTarget(text string, targets []string) bool {
+	for _, t := range targets {
+		if strings.Contains(text, t) {
+			return true
+		}
+	}
+	return false
 }
