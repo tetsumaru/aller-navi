@@ -1,4 +1,4 @@
-name: Deploy to Cloud Functions
+name: Deploy
 
 on:
   push:
@@ -7,8 +7,8 @@ on:
   workflow_dispatch:
 
 jobs:
-  deploy:
-    name: Deploy highlight-pdf
+  deploy-highlight-pdf:
+    name: highlight-pdf をデプロイ
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -17,13 +17,13 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Authenticate to Google Cloud
+      - name: Google Cloud に認証
         uses: google-github-actions/auth@v2
         with:
           workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
           service_account: ${{ secrets.GCP_SERVICE_ACCOUNT }}
 
-      - name: Deploy highlight-pdf
+      - name: highlight-pdf をデプロイ
         uses: google-github-actions/deploy-cloud-functions@v3
         with:
           name: highlight-pdf
@@ -32,3 +32,41 @@ jobs:
           source_dir: functions/highlight-pdf
           entry_point: HighlightPDF
           ingress_settings: ALLOW_ALL
+
+  deploy-linebot:
+    name: linebot をデプロイ
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Google Cloud に認証
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ secrets.GCP_SERVICE_ACCOUNT }}
+
+      - name: Docker を Artifact Registry に設定
+        run: gcloud auth configure-docker asia-northeast1-docker.pkg.dev --quiet
+
+      - name: Docker イメージをビルド・プッシュ
+        run: |
+          IMAGE=asia-northeast1-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/linebot/linebot:${{ github.sha }}
+          docker build -t "$IMAGE" functions/linebot
+          docker push "$IMAGE"
+
+      - name: linebot を Cloud Run にデプロイ
+        uses: google-github-actions/deploy-cloudrun@v2
+        with:
+          service: linebot
+          image: asia-northeast1-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/linebot/linebot:${{ github.sha }}
+          region: asia-northeast1
+          flags: --allow-unauthenticated
+          env_vars: |
+            LINE_CHANNEL_SECRET=${{ secrets.LINE_CHANNEL_SECRET }}
+            LINE_CHANNEL_ACCESS_TOKEN=${{ secrets.LINE_CHANNEL_ACCESS_TOKEN }}
+            HIGHLIGHT_PDF_URL=${{ secrets.HIGHLIGHT_PDF_URL }}
+            GCS_BUCKET=${{ secrets.GCS_BUCKET }}
