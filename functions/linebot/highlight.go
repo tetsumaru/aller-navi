@@ -39,6 +39,12 @@ func callHighlightPDF(ctx context.Context, pdfBytes []byte, userID string) ([]by
 	}
 	req.Header.Set("Content-Type", w.FormDataContentType())
 
+	idToken, err := fetchIDToken(ctx, url)
+	if err != nil {
+		return nil, fmt.Errorf("ID トークン取得: %w", err)
+	}
+	req.Header.Set("Authorization", "Bearer "+idToken)
+
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
 		return nil, fmt.Errorf("HTTP リクエスト: %w", err)
@@ -51,4 +57,31 @@ func callHighlightPDF(ctx context.Context, pdfBytes []byte, userID string) ([]by
 	}
 
 	return io.ReadAll(resp.Body)
+}
+
+// fetchIDToken は GCP メタデータサーバーから audience 向けの ID トークンを取得します。
+func fetchIDToken(ctx context.Context, audience string) (string, error) {
+	metadataURL := "http://metadata.google.internal/computeMetadata/v1/instance/service-accounts/default/identity?audience=" + audience
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, metadataURL, nil)
+	if err != nil {
+		return "", err
+	}
+	req.Header.Set("Metadata-Flavor", "Google")
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return "", err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		b, _ := io.ReadAll(resp.Body)
+		return "", fmt.Errorf("メタデータサーバーエラー (status=%d): %s", resp.StatusCode, b)
+	}
+
+	token, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return "", err
+	}
+	return string(token), nil
 }
