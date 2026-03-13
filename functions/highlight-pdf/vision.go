@@ -39,9 +39,7 @@ func DetectText(ctx context.Context, pdfBytes []byte) ([]PageInfo, error) {
 		Requests: []*visionpb.AnnotateFileRequest{
 			{
 				InputConfig: &visionpb.InputConfig{
-					GcsSourceOrContent: &visionpb.InputConfig_Content{
-						Content: pdfBytes,
-					},
+					Content:  pdfBytes,
 					MimeType: "application/pdf",
 				},
 				Features: []*visionpb.Feature{
