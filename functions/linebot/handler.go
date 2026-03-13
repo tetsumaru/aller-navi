@@ -53,6 +53,11 @@ func handleEvent(ctx context.Context, event *linebot.Event) error {
 		return nil
 	}
 
+	// テキストメッセージはアレルゲン登録として処理する
+	if textMsg, ok := event.Message.(*linebot.TextMessage); ok {
+		return handleAllergenRegistration(ctx, event.ReplyToken, textMsg.Text)
+	}
+
 	fileMsg, ok := event.Message.(*linebot.FileMessage)
 	if !ok {
 		return nil
@@ -108,6 +113,40 @@ func handleEvent(ctx context.Context, event *linebot.Event) error {
 	// LINE に画像を返信する（最大 5 枚）
 	msgs := buildImageMessages(urls)
 	_, err = bot.ReplyMessage(event.ReplyToken, msgs...).Do()
+	return err
+}
+
+// handleAllergenRegistration はテキストメッセージをアレルゲン情報として Firestore に登録します。
+func handleAllergenRegistration(ctx context.Context, replyToken, text string) error {
+	target := strings.TrimSpace(text)
+	if target == "" {
+		return nil
+	}
+
+	if err := callRegisterAllergen(ctx, target, fixedUserID); err != nil {
+		slog.Error("アレルゲン登録エラー", "err", err)
+		_, replyErr := bot.ReplyMessage(replyToken,
+			linebot.NewTextMessage("アレルゲン情報の登録中にエラーが発生しました。"),
+		).Do()
+		if replyErr != nil {
+			slog.Error("エラー返信失敗", "err", replyErr)
+		}
+		return fmt.Errorf("アレルゲン登録: %w", err)
+	}
+
+	// 登録内容を箇条書きで表示する
+	lines := strings.Split(target, "\n")
+	var items []string
+	for _, l := range lines {
+		if l = strings.TrimSpace(l); l != "" {
+			items = append(items, "・"+l)
+		}
+	}
+	replyText := "以下のアレルゲン情報を登録しました。\n" + strings.Join(items, "\n")
+
+	_, err := bot.ReplyMessage(replyToken,
+		linebot.NewTextMessage(replyText),
+	).Do()
 	return err
 }
 

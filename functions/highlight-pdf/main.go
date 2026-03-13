@@ -8,4 +8,5 @@ import (
 
 func init() {
 	functions.HTTP("HighlightPDF", Handler)
+	functions.HTTP("RegisterAllergen", RegisterAllergenHandler)
 }
