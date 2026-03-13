@@ -57,16 +57,16 @@ func ProcessPDF(pdfBytes []byte, pages []PageInfo, target string) ([]byte, error
 
 			ann := model.NewSquareAnnotation(
 				*rect,
-				0,              // apObjNr
-				"", "",         // contents, id
-				"",             // modDate
-				0,              // AnnotationFlags
-				highlightColor, // fill color
-				"",             // title
-				nil,            // popupIndRef
-				0.5,            // ca (opacity)
-				0, 0,           // borderRadX, borderRadY
-				nil,            // BorderStyle
+				"",                   // contents
+				"",                   // id
+				0,                    // AnnotationFlags
+				0,                    // borderWidth (no border)
+				model.BorderStyle{},  // borderStyle
+				nil,                  // borderCol (no border)
+				false,                // cloudyBorder
+				0,                    // cloudyBorderIntensity
+				&highlightColor,      // fillCol
+				0, 0, 0, 0,           // MLeft, MTop, MRight, MBot
 			)
 
 			slog.Info("adding highlight",
