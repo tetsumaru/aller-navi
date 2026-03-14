@@ -4,34 +4,34 @@ import (
 	"bytes"
 	"fmt"
 	"log/slog"
+	"os"
 	"strings"
 
 	"github.com/pdfcpu/pdfcpu/pkg/api"
-	"github.com/pdfcpu/pdfcpu/pkg/pdfcpu/color"
 	"github.com/pdfcpu/pdfcpu/pkg/pdfcpu/model"
 	"github.com/pdfcpu/pdfcpu/pkg/pdfcpu/types"
 )
 
-// highlightColor はハイライトに適用する色（黄色）です。
-var highlightColor = color.SimpleColor{R: 1.0, G: 0.95, B: 0.0}
+// highlightRect は PDF ポイント座標系での矩形（左下原点）を表します。
+type highlightRect struct{ x, y, w, h float64 }
 
-// ProcessPDF は PDF に target 文字列を含むテキストブロックのハイライトを追加します。
-// pages は PDF のページと 1:1 対応している必要があります（インデックス 0 = 1 ページ目）。
+// ProcessPDF は PDF の target 文字列を含むテキストブロックにハイライトを追加します。
+// アノテーションではなくページのコンテンツストリームに直接描画するため、
+// LINE 画像プレビューを含むあらゆる PDF レンダラーで表示されます。
 func ProcessPDF(pdfBytes []byte, pages []PageInfo, target string) ([]byte, error) {
-	// PDF の各ページサイズを取得する。
 	dims, err := api.PageDims(bytes.NewReader(pdfBytes), nil)
 	if err != nil {
 		return nil, fmt.Errorf("get page dims: %w", err)
 	}
-
-	// ページ番号 → アノテーション のマップを構築して一括追加に備える。
-	annotationsMap := make(map[int][]model.AnnotationRenderer)
 
 	targets := splitTargets(target)
 	slog.Info("ProcessPDF start",
 		"page_count", len(pages),
 		"targets", targets,
 	)
+
+	// ページ番号 → 矩形リスト のマップを構築する。
+	pageRects := make(map[int][]highlightRect)
 
 	for pageIdx, page := range pages {
 		if pageIdx >= len(dims) {
@@ -70,43 +70,110 @@ func ProcessPDF(pdfBytes []byte, pages []PageInfo, target string) ([]byte, error
 			pdfX2 := block.X2 * scaleX
 			pdfY2 := pdfH - (block.Y1 * scaleY) // Y 軸を反転
 
-			rect := types.NewRectangle(pdfX1, pdfY1, pdfX2, pdfY2)
-
-			ann := model.NewSquareAnnotation(
-				*rect,
-				"",                   // contents
-				"",                   // id
-				0,                    // AnnotationFlags
-				0,                    // borderWidth (no border)
-				model.BSSolid,        // borderStyle
-				nil,                  // borderCol (no border)
-				false,                // cloudyBorder
-				0,                    // cloudyBorderIntensity
-				&highlightColor,      // fillCol
-				0, 0, 0, 0,           // MLeft, MTop, MRight, MBot
-			)
-
 			slog.Info("adding highlight",
 				"page", pageNum,
 				"text", block.Text,
 				"rect", fmt.Sprintf("(%.1f,%.1f)-(%.1f,%.1f)", pdfX1, pdfY1, pdfX2, pdfY2),
 			)
 
-			annotationsMap[pageNum] = append(annotationsMap[pageNum], ann)
+			pageRects[pageNum] = append(pageRects[pageNum], highlightRect{
+				x: pdfX1,
+				y: pdfY1,
+				w: pdfX2 - pdfX1,
+				h: pdfY2 - pdfY1,
+			})
 		}
 	}
 
-	if len(annotationsMap) == 0 {
+	if len(pageRects) == 0 {
 		slog.Warn("no highlights added: no text blocks matched any target")
 		return pdfBytes, nil
 	}
 
+	// ページ別にハイライト用 PDF を一時ファイルとして作成し、
+	// pdfcpu のウォーターマーク機能でコンテンツストリームに直接埋め込む。
+	// OnTop=false にすることで、テキストの下（コンテンツストリームの先頭）に描画される。
+	watermarksMap := make(map[int][]*model.Watermark)
+	var tempFiles []string
+	defer func() {
+		for _, f := range tempFiles {
+			os.Remove(f)
+		}
+	}()
+
+	for pageNum, rects := range pageRects {
+		pdfW := dims[pageNum-1].Width
+		pdfH := dims[pageNum-1].Height
+
+		tmpPath, err := writeHighlightPDF(pdfW, pdfH, rects)
+		if err != nil {
+			return nil, fmt.Errorf("create highlight PDF page %d: %w", pageNum, err)
+		}
+		tempFiles = append(tempFiles, tmpPath)
+
+		// scalefactor:1 abs でウォーターマーク PDF をそのままのサイズで配置する。
+		// 対象ページと同じ MediaBox を持つ PDF を中央揃えで配置すると座標が 1:1 で一致する。
+		wm, err := api.PDFWatermark(tmpPath+":1", "scalefactor:1 abs, rot:0", false, false, types.POINTS)
+		if err != nil {
+			return nil, fmt.Errorf("create watermark page %d: %w", pageNum, err)
+		}
+		watermarksMap[pageNum] = []*model.Watermark{wm}
+	}
+
 	var buf bytes.Buffer
-	if err := api.AddAnnotationsMap(bytes.NewReader(pdfBytes), &buf, annotationsMap, nil); err != nil {
-		return nil, fmt.Errorf("add annotations: %w", err)
+	if err := api.AddWatermarksSliceMap(bytes.NewReader(pdfBytes), &buf, watermarksMap, nil); err != nil {
+		return nil, fmt.Errorf("add watermarks: %w", err)
 	}
 
 	return buf.Bytes(), nil
+}
+
+// writeHighlightPDF はページサイズと矩形リストから黄色矩形を描画する最小限の PDF を生成し、
+// 一時ファイルに書き出してそのパスを返します。
+func writeHighlightPDF(width, height float64, rects []highlightRect) (string, error) {
+	// コンテンツストリーム: 黄色（R=1.0 G=0.953 B=0）で矩形を塗りつぶす
+	var cs bytes.Buffer
+	cs.WriteString("q\n1.000 0.953 0.000 rg\n")
+	for _, r := range rects {
+		fmt.Fprintf(&cs, "%.3f %.3f %.3f %.3f re\n", r.x, r.y, r.w, r.h)
+	}
+	cs.WriteString("f\nQ\n")
+	csData := cs.Bytes()
+
+	// 最小限の PDF を組み立てる（xref オフセットを手動計算）
+	var b bytes.Buffer
+	b.WriteString("%PDF-1.4\n")
+
+	off1 := b.Len()
+	b.WriteString("1 0 obj\n<</Type /Catalog /Pages 2 0 R>>\nendobj\n")
+
+	off2 := b.Len()
+	b.WriteString("2 0 obj\n<</Type /Pages /Kids [3 0 R] /Count 1>>\nendobj\n")
+
+	off3 := b.Len()
+	fmt.Fprintf(&b, "3 0 obj\n<</Type /Page /Parent 2 0 R /MediaBox [0 0 %.3f %.3f] /Contents 4 0 R /Resources <<>>>>\nendobj\n", width, height)
+
+	off4 := b.Len()
+	fmt.Fprintf(&b, "4 0 obj\n<</Length %d>>\nstream\n", len(csData))
+	b.Write(csData)
+	b.WriteString("endstream\nendobj\n")
+
+	xrefOff := b.Len()
+	fmt.Fprintf(&b,
+		"xref\n0 5\n0000000000 65535 f \n%010d 00000 n \n%010d 00000 n \n%010d 00000 n \n%010d 00000 n \ntrailer\n<</Size 5 /Root 1 0 R>>\nstartxref\n%d\n%%%%EOF\n",
+		off1, off2, off3, off4, xrefOff,
+	)
+
+	f, err := os.CreateTemp("", "aller-navi-hl-*.pdf")
+	if err != nil {
+		return "", err
+	}
+	defer f.Close()
+	if _, err := f.Write(b.Bytes()); err != nil {
+		os.Remove(f.Name())
+		return "", err
+	}
+	return f.Name(), nil
 }
 
 // splitTargets は改行区切りの target 文字列を個別のアレルゲン文字列のスライスに変換します。
