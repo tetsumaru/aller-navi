@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"log/slog"
+	"math"
 	"os"
 	"strings"
 
@@ -102,43 +103,65 @@ func ProcessPDF(pdfBytes []byte, pages []PageInfo, target string) ([]byte, error
 						continue
 					}
 
-					// マッチした単語群のバウンディングボックスを計算する。
-					wx1 := words[i].X1
-					wy1 := words[i].Y1
-					wx2 := words[i].X2
-					wy2 := words[i].Y2
-					for j := i + 1; j < i+windowSize; j++ {
-						if words[j].X1 < wx1 {
-							wx1 = words[j].X1
+					matchedWords := words[i : i+windowSize]
+
+					if wordsOnSameLine(matchedWords) {
+						// 同一行: 結合バウンディングボックスで 1 矩形
+						wx1 := matchedWords[0].X1
+						wy1 := matchedWords[0].Y1
+						wx2 := matchedWords[0].X2
+						wy2 := matchedWords[0].Y2
+						for _, w := range matchedWords[1:] {
+							if w.X1 < wx1 {
+								wx1 = w.X1
+							}
+							if w.Y1 < wy1 {
+								wy1 = w.Y1
+							}
+							if w.X2 > wx2 {
+								wx2 = w.X2
+							}
+							if w.Y2 > wy2 {
+								wy2 = w.Y2
+							}
 						}
-						if words[j].Y1 < wy1 {
-							wy1 = words[j].Y1
-						}
-						if words[j].X2 > wx2 {
-							wx2 = words[j].X2
-						}
-						if words[j].Y2 > wy2 {
-							wy2 = words[j].Y2
+						pdfX1 := wx1 * scaleX
+						pdfY1 := pdfH - (wy2 * scaleY)
+						pdfX2 := wx2 * scaleX
+						pdfY2 := pdfH - (wy1 * scaleY)
+						slog.Info("adding highlight (multi-word)",
+							"page", pageNum,
+							"text", text,
+							"rect", fmt.Sprintf("(%.1f,%.1f)-(%.1f,%.1f)", pdfX1, pdfY1, pdfX2, pdfY2),
+						)
+						pageRects[pageNum] = append(pageRects[pageNum], highlightRect{
+							x: pdfX1,
+							y: pdfY1,
+							w: pdfX2 - pdfX1,
+							h: pdfY2 - pdfY1,
+						})
+					} else {
+						// 複数行またぎ: 単語ごとに個別矩形を追加することで
+						// 行間に存在する無関係テキストを誤ってハイライトしない。
+						for _, w := range matchedWords {
+							pdfX1 := w.X1 * scaleX
+							pdfY1 := pdfH - (w.Y2 * scaleY)
+							pdfX2 := w.X2 * scaleX
+							pdfY2 := pdfH - (w.Y1 * scaleY)
+							slog.Info("adding highlight (multi-word, cross-line)",
+								"page", pageNum,
+								"text", text,
+								"word", w.Text,
+								"rect", fmt.Sprintf("(%.1f,%.1f)-(%.1f,%.1f)", pdfX1, pdfY1, pdfX2, pdfY2),
+							)
+							pageRects[pageNum] = append(pageRects[pageNum], highlightRect{
+								x: pdfX1,
+								y: pdfY1,
+								w: pdfX2 - pdfX1,
+								h: pdfY2 - pdfY1,
+							})
 						}
 					}
-
-					pdfX1 := wx1 * scaleX
-					pdfY1 := pdfH - (wy2 * scaleY)
-					pdfX2 := wx2 * scaleX
-					pdfY2 := pdfH - (wy1 * scaleY)
-
-					slog.Info("adding highlight (multi-word)",
-						"page", pageNum,
-						"text", text,
-						"rect", fmt.Sprintf("(%.1f,%.1f)-(%.1f,%.1f)", pdfX1, pdfY1, pdfX2, pdfY2),
-					)
-
-					pageRects[pageNum] = append(pageRects[pageNum], highlightRect{
-						x: pdfX1,
-						y: pdfY1,
-						w: pdfX2 - pdfX1,
-						h: pdfY2 - pdfY1,
-					})
 				}
 			}
 		}
@@ -266,4 +289,20 @@ func exactMatchesAnyTarget(text string, targets []string) bool {
 		}
 	}
 	return false
+}
+
+// wordsOnSameLine は単語リストがすべて同一視覚行にあるかを判定します。
+// 連続する 2 単語間の Y 中心座標の差が平均単語高さ以内であれば同一行とみなします。
+func wordsOnSameLine(words []TextBlock) bool {
+	for i := 1; i < len(words); i++ {
+		prev := words[i-1]
+		curr := words[i]
+		prevCenter := (prev.Y1 + prev.Y2) / 2
+		currCenter := (curr.Y1 + curr.Y2) / 2
+		avgHeight := ((prev.Y2 - prev.Y1) + (curr.Y2 - curr.Y1)) / 2
+		if math.Abs(prevCenter-currCenter) > avgHeight {
+			return false
+		}
+	}
+	return true
 }
