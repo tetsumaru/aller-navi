@@ -6,7 +6,7 @@ import (
 )
 
 func TestPolyBoundsNil(t *testing.T) {
-	x1, y1, x2, y2 := polyBounds(nil)
+	x1, y1, x2, y2 := polyBounds(nil, 100, 200)
 	if x1 != 0 || y1 != 0 || x2 != 0 || y2 != 0 {
 		t.Errorf("expected all zeros for nil poly, got (%.1f,%.1f,%.1f,%.1f)", x1, y1, x2, y2)
 	}

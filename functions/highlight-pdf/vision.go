@@ -79,7 +79,7 @@ func DetectText(ctx context.Context, pdfBytes []byte) ([]PageInfo, error) {
 						if text == "" {
 							continue
 						}
-						x1, y1, x2, y2 := polyBounds(para.GetBoundingBox())
+						x1, y1, x2, y2 := polyBounds(para.GetBoundingBox(), pi.Width, pi.Height)
 						pi.Blocks = append(pi.Blocks, TextBlock{
 							Text: text,
 							X1:   x1, Y1: y1,
@@ -108,30 +108,62 @@ func extractParagraphText(para *visionpb.Paragraph) string {
 }
 
 // polyBounds は BoundingPoly の軸平行バウンディングボックスを返します。
-func polyBounds(poly *visionpb.BoundingPoly) (x1, y1, x2, y2 float64) {
-	if poly == nil || len(poly.GetVertices()) == 0 {
+// vertices が空の場合は normalized_vertices をページ寸法でスケールして使用します。
+func polyBounds(poly *visionpb.BoundingPoly, pageW, pageH int32) (x1, y1, x2, y2 float64) {
+	if poly == nil {
 		return 0, 0, 0, 0
 	}
-	verts := poly.GetVertices()
-	x1 = float64(verts[0].GetX())
-	y1 = float64(verts[0].GetY())
-	x2 = x1
-	y2 = y1
-	for _, v := range verts[1:] {
+
+	if verts := poly.GetVertices(); len(verts) > 0 {
+		x1 = float64(verts[0].GetX())
+		y1 = float64(verts[0].GetY())
+		x2 = x1
+		y2 = y1
+		for _, v := range verts[1:] {
+			x := float64(v.GetX())
+			y := float64(v.GetY())
+			if x < x1 {
+				x1 = x
+			}
+			if y < y1 {
+				y1 = y
+			}
+			if x > x2 {
+				x2 = x
+			}
+			if y > y2 {
+				y2 = y
+			}
+		}
+		return x1, y1, x2, y2
+	}
+
+	// normalized_vertices にフォールバック（0〜1 の正規化座標をピクセルに変換）
+	normVerts := poly.GetNormalizedVertices()
+	if len(normVerts) == 0 {
+		return 0, 0, 0, 0
+	}
+	w := float64(pageW)
+	h := float64(pageH)
+	nx1 := float64(normVerts[0].GetX())
+	ny1 := float64(normVerts[0].GetY())
+	nx2 := nx1
+	ny2 := ny1
+	for _, v := range normVerts[1:] {
 		x := float64(v.GetX())
 		y := float64(v.GetY())
-		if x < x1 {
-			x1 = x
+		if x < nx1 {
+			nx1 = x
 		}
-		if y < y1 {
-			y1 = y
+		if y < ny1 {
+			ny1 = y
 		}
-		if x > x2 {
-			x2 = x
+		if x > nx2 {
+			nx2 = x
 		}
-		if y > y2 {
-			y2 = y
+		if y > ny2 {
+			ny2 = y
 		}
 	}
-	return x1, y1, x2, y2
+	return nx1 * w, ny1 * h, nx2 * w, ny2 * h
 }
