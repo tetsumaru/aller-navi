@@ -18,7 +18,7 @@ type PageInfo struct {
 	Blocks []TextBlock
 }
 
-// TextBlock は段落レベルのテキスト領域とそのバウンディングボックスを表します。
+// TextBlock は単語レベルのテキスト領域とそのバウンディングボックスを表します。
 // 座標は画像ピクセル座標（左上原点、Y 軸下向き）です。
 type TextBlock struct {
 	Text string
@@ -76,21 +76,23 @@ func DetectText(ctx context.Context, pdfBytes []byte) ([]PageInfo, error) {
 
 				for _, block := range page.GetBlocks() {
 					for _, para := range block.GetParagraphs() {
-						text := extractParagraphText(para)
-						if text == "" {
-							continue
+						for _, word := range para.GetWords() {
+							text := extractWordText(word)
+							if text == "" {
+								continue
+							}
+							x1, y1, x2, y2 := polyBounds(word.GetBoundingBox(), pi.Width, pi.Height)
+							slog.Debug("detected word",
+								"page", len(pages)+1,
+								"text", text,
+								"bbox", fmt.Sprintf("(%.0f,%.0f)-(%.0f,%.0f)", x1, y1, x2, y2),
+							)
+							pi.Blocks = append(pi.Blocks, TextBlock{
+								Text: text,
+								X1:   x1, Y1: y1,
+								X2:   x2, Y2: y2,
+							})
 						}
-						x1, y1, x2, y2 := polyBounds(para.GetBoundingBox(), pi.Width, pi.Height)
-						slog.Debug("detected paragraph",
-							"page", len(pages)+1,
-							"text", text,
-							"bbox", fmt.Sprintf("(%.0f,%.0f)-(%.0f,%.0f)", x1, y1, x2, y2),
-						)
-						pi.Blocks = append(pi.Blocks, TextBlock{
-							Text: text,
-							X1:   x1, Y1: y1,
-							X2:   x2, Y2: y2,
-						})
 					}
 				}
 
@@ -108,13 +110,11 @@ func DetectText(ctx context.Context, pdfBytes []byte) ([]PageInfo, error) {
 	return pages, nil
 }
 
-// extractParagraphText は段落内の全シンボルテキストを連結して返します。
-func extractParagraphText(para *visionpb.Paragraph) string {
+// extractWordText は単語内の全シンボルテキストを連結して返します。
+func extractWordText(word *visionpb.Word) string {
 	var sb strings.Builder
-	for _, word := range para.GetWords() {
-		for _, sym := range word.GetSymbols() {
-			sb.WriteString(sym.GetText())
-		}
+	for _, sym := range word.GetSymbols() {
+		sb.WriteString(sym.GetText())
 	}
 	return sb.String()
 }
