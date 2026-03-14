@@ -63,9 +63,14 @@ func handleEvent(ctx context.Context, event *linebot.Event) error {
 		return nil
 	}
 
+	return handleFileMessage(ctx, event.ReplyToken, fileMsg)
+}
+
+// handleFileMessage はファイルメッセージ（PDF）を処理します。
+func handleFileMessage(ctx context.Context, replyToken string, fileMsg *linebot.FileMessage) error {
 	// PDF ファイルのみ処理する
 	if !strings.HasSuffix(strings.ToLower(fileMsg.FileName), ".pdf") {
-		_, err := bot.ReplyMessage(event.ReplyToken,
+		_, err := bot.ReplyMessage(replyToken,
 			linebot.NewTextMessage("PDF ファイルを送信してください。"),
 		).Do()
 		return err
@@ -89,7 +94,7 @@ func handleEvent(ctx context.Context, event *linebot.Event) error {
 	highlighted, err := callHighlightPDF(ctx, pdfBytes, fixedUserID)
 	if err != nil {
 		slog.Error("highlight-pdf 呼び出しエラー", "err", err)
-		_, replyErr := bot.ReplyMessage(event.ReplyToken,
+		_, replyErr := bot.ReplyMessage(replyToken,
 			linebot.NewTextMessage("PDF の処理中にエラーが発生しました。"),
 		).Do()
 		if replyErr != nil {
@@ -112,7 +117,7 @@ func handleEvent(ctx context.Context, event *linebot.Event) error {
 
 	// LINE に画像を返信する（最大 5 枚）
 	msgs := buildImageMessages(urls)
-	_, err = bot.ReplyMessage(event.ReplyToken, msgs...).Do()
+	_, err = bot.ReplyMessage(replyToken, msgs...).Do()
 	return err
 }
 
