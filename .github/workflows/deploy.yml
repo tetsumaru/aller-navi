@@ -33,6 +33,32 @@ jobs:
           entry_point: HighlightPDF
           ingress_settings: ALLOW_ALL
 
+  deploy-register-allergen:
+    name: register-allergen をデプロイ
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Google Cloud に認証
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ secrets.GCP_SERVICE_ACCOUNT }}
+
+      - name: register-allergen をデプロイ
+        uses: google-github-actions/deploy-cloud-functions@v3
+        with:
+          name: register-allergen
+          runtime: go126
+          region: asia-northeast1
+          source_dir: functions/highlight-pdf
+          entry_point: RegisterAllergen
+          ingress_settings: ALLOW_ALL
+
   deploy-linebot:
     name: linebot をデプロイ
     runs-on: ubuntu-latest
@@ -70,3 +96,4 @@ jobs:
             LINE_CHANNEL_ACCESS_TOKEN=${{ secrets.LINE_CHANNEL_ACCESS_TOKEN }}
             HIGHLIGHT_PDF_URL=${{ secrets.HIGHLIGHT_PDF_URL }}
             GCS_BUCKET=${{ secrets.GCS_BUCKET }}
+            REGISTER_ALLERGEN_URL=${{ secrets.REGISTER_ALLERGEN_URL }}
