@@ -34,3 +34,49 @@ func TestContainsTarget(t *testing.T) {
 		})
 	}
 }
+
+// TestMatchesAnyTargetMultiWord は、Vision API が複数単語に分割したテキストでも
+// 結合済みパラグラフブロックによってマッチすることを確認する。
+// 例: 「主食バターロール」が「主食」「バターロール」に分割されるケース。
+func TestMatchesAnyTargetMultiWord(t *testing.T) {
+	tests := []struct {
+		name    string
+		text    string
+		targets []string
+		want    bool
+	}{
+		{
+			name:    "単語が結合されてマッチする",
+			text:    "主食バターロール",
+			targets: []string{"主食バターロール"},
+			want:    true,
+		},
+		{
+			name:    "単語単独ではマッチしない",
+			text:    "バターロール",
+			targets: []string{"主食バターロール"},
+			want:    false,
+		},
+		{
+			name:    "単語単独ではマッチしない（前半）",
+			text:    "主食",
+			targets: []string{"主食バターロール"},
+			want:    false,
+		},
+		{
+			name:    "部分一致する単一単語ターゲット",
+			text:    "バターロール",
+			targets: []string{"バターロール"},
+			want:    true,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			got := matchesAnyTarget(tc.text, tc.targets)
+			if got != tc.want {
+				t.Errorf("matchesAnyTarget(%q, %v) = %v, want %v", tc.text, tc.targets, got, tc.want)
+			}
+		})
+	}
+}
