@@ -83,6 +83,65 @@ func ProcessPDF(pdfBytes []byte, pages []PageInfo, target string) ([]byte, error
 				h: pdfY2 - pdfY1,
 			})
 		}
+
+		// 複数単語にまたがるターゲット（例：「主食バターロール」）のマッチング。
+		// パラグラフ内の連続する単語を結合し、ターゲットと完全一致する場合のみハイライトを追加する。
+		// 部分一致（strings.Contains）ではなく完全一致（==）を使用することで、
+		// 「牛乳」のような単一単語ターゲットが隣接単語との結合テキストにマッチして
+		// 不必要に広い範囲がハイライトされる問題を防ぐ。
+		for _, para := range page.Paragraphs {
+			words := para.Words
+			for windowSize := 2; windowSize <= len(words); windowSize++ {
+				for i := 0; i <= len(words)-windowSize; i++ {
+					var sb strings.Builder
+					for j := i; j < i+windowSize; j++ {
+						sb.WriteString(words[j].Text)
+					}
+					text := sb.String()
+					if !exactMatchesAnyTarget(text, targets) {
+						continue
+					}
+
+					// マッチした単語群のバウンディングボックスを計算する。
+					wx1 := words[i].X1
+					wy1 := words[i].Y1
+					wx2 := words[i].X2
+					wy2 := words[i].Y2
+					for j := i + 1; j < i+windowSize; j++ {
+						if words[j].X1 < wx1 {
+							wx1 = words[j].X1
+						}
+						if words[j].Y1 < wy1 {
+							wy1 = words[j].Y1
+						}
+						if words[j].X2 > wx2 {
+							wx2 = words[j].X2
+						}
+						if words[j].Y2 > wy2 {
+							wy2 = words[j].Y2
+						}
+					}
+
+					pdfX1 := wx1 * scaleX
+					pdfY1 := pdfH - (wy2 * scaleY)
+					pdfX2 := wx2 * scaleX
+					pdfY2 := pdfH - (wy1 * scaleY)
+
+					slog.Info("adding highlight (multi-word)",
+						"page", pageNum,
+						"text", text,
+						"rect", fmt.Sprintf("(%.1f,%.1f)-(%.1f,%.1f)", pdfX1, pdfY1, pdfX2, pdfY2),
+					)
+
+					pageRects[pageNum] = append(pageRects[pageNum], highlightRect{
+						x: pdfX1,
+						y: pdfY1,
+						w: pdfX2 - pdfX1,
+						h: pdfY2 - pdfY1,
+					})
+				}
+			}
+		}
 	}
 
 	if len(pageRects) == 0 {
@@ -188,9 +247,21 @@ func splitTargets(target string) []string {
 }
 
 // matchesAnyTarget はテキストブロックがいずれかのアレルゲン文字列を含むか判定します。
+// 単語レベルのブロックに対して部分一致で使用します。
 func matchesAnyTarget(text string, targets []string) bool {
 	for _, t := range targets {
 		if strings.Contains(text, t) {
+			return true
+		}
+	}
+	return false
+}
+
+// exactMatchesAnyTarget はテキストがいずれかのターゲット文字列と完全一致するか判定します。
+// 複数単語を結合したスパンに対して使用し、部分一致による過剰ハイライトを防ぎます。
+func exactMatchesAnyTarget(text string, targets []string) bool {
+	for _, t := range targets {
+		if text == t {
 			return true
 		}
 	}

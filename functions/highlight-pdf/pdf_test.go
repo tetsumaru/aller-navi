@@ -35,9 +35,7 @@ func TestContainsTarget(t *testing.T) {
 	}
 }
 
-// TestMatchesAnyTargetMultiWord は、Vision API が複数単語に分割したテキストでも
-// 結合済みパラグラフブロックによってマッチすることを確認する。
-// 例: 「主食バターロール」が「主食」「バターロール」に分割されるケース。
+// TestMatchesAnyTargetMultiWord は部分一致マッチングの動作を確認する。
 func TestMatchesAnyTargetMultiWord(t *testing.T) {
 	tests := []struct {
 		name    string
@@ -46,20 +44,14 @@ func TestMatchesAnyTargetMultiWord(t *testing.T) {
 		want    bool
 	}{
 		{
-			name:    "単語が結合されてマッチする",
+			name:    "部分一致でマッチする",
 			text:    "主食バターロール",
 			targets: []string{"主食バターロール"},
 			want:    true,
 		},
 		{
-			name:    "単語単独ではマッチしない",
+			name:    "単語単独ではマッチしない（後半）",
 			text:    "バターロール",
-			targets: []string{"主食バターロール"},
-			want:    false,
-		},
-		{
-			name:    "単語単独ではマッチしない（前半）",
-			text:    "主食",
 			targets: []string{"主食バターロール"},
 			want:    false,
 		},
@@ -69,6 +61,12 @@ func TestMatchesAnyTargetMultiWord(t *testing.T) {
 			targets: []string{"バターロール"},
 			want:    true,
 		},
+		{
+			name:    "牛乳を含む単語もマッチする（既存の単語レベル動作）",
+			text:    "牛乳未満児100cc",
+			targets: []string{"牛乳"},
+			want:    true,
+		},
 	}
 
 	for _, tc := range tests {
@@ -76,6 +74,51 @@ func TestMatchesAnyTargetMultiWord(t *testing.T) {
 			got := matchesAnyTarget(tc.text, tc.targets)
 			if got != tc.want {
 				t.Errorf("matchesAnyTarget(%q, %v) = %v, want %v", tc.text, tc.targets, got, tc.want)
+			}
+		})
+	}
+}
+
+// TestExactMatchesAnyTarget は複数単語スパンの完全一致マッチングを確認する。
+// 「牛乳」のような単一単語ターゲットが隣接単語との結合でマッチしないことを保証する。
+func TestExactMatchesAnyTarget(t *testing.T) {
+	tests := []struct {
+		name    string
+		text    string
+		targets []string
+		want    bool
+	}{
+		{
+			name:    "完全一致でマッチする",
+			text:    "主食バターロール",
+			targets: []string{"主食バターロール"},
+			want:    true,
+		},
+		{
+			name:    "牛乳を含む複数単語スパンはマッチしない",
+			text:    "鶏こし豆腐牛乳",
+			targets: []string{"牛乳"},
+			want:    false,
+		},
+		{
+			name:    "牛乳未満児100ccはマッチしない",
+			text:    "牛乳未満児100cc",
+			targets: []string{"牛乳"},
+			want:    false,
+		},
+		{
+			name:    "単一単語の完全一致",
+			text:    "牛乳",
+			targets: []string{"牛乳"},
+			want:    true,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			got := exactMatchesAnyTarget(tc.text, tc.targets)
+			if got != tc.want {
+				t.Errorf("exactMatchesAnyTarget(%q, %v) = %v, want %v", tc.text, tc.targets, got, tc.want)
 			}
 		})
 	}

@@ -10,12 +10,19 @@ import (
 	visionpb "cloud.google.com/go/vision/v2/apiv1/visionpb"
 )
 
+// ParagraphInfo は Vision API のパラグラフ内の単語リストを保持します。
+// 複数単語にまたがるターゲット（例：「主食バターロール」）のマッチングに使用します。
+type ParagraphInfo struct {
+	Words []TextBlock
+}
+
 // PageInfo は PDF の 1 ページ分の検出テキストブロックを保持します。
 type PageInfo struct {
 	// Width と Height は Vision API が返すレンダリング済み画像の寸法（ピクセル）です。
-	Width  int32
-	Height int32
-	Blocks []TextBlock
+	Width      int32
+	Height     int32
+	Blocks     []TextBlock     // 単語レベルのブロック（部分一致マッチング用）
+	Paragraphs []ParagraphInfo // パラグラフ構造（複数単語の完全一致マッチング用）
 }
 
 // TextBlock は単語レベルのテキスト領域とそのバウンディングボックスを表します。
@@ -76,9 +83,7 @@ func DetectText(ctx context.Context, pdfBytes []byte) ([]PageInfo, error) {
 
 				for _, block := range page.GetBlocks() {
 					for _, para := range block.GetParagraphs() {
-						var paraTexts []string
-						var paraX1, paraY1, paraX2, paraY2 float64
-						firstWord := true
+						var paraWords []TextBlock
 
 						for _, word := range para.GetWords() {
 							text := extractWordText(word)
@@ -91,41 +96,20 @@ func DetectText(ctx context.Context, pdfBytes []byte) ([]PageInfo, error) {
 								"text", text,
 								"bbox", fmt.Sprintf("(%.0f,%.0f)-(%.0f,%.0f)", x1, y1, x2, y2),
 							)
-							pi.Blocks = append(pi.Blocks, TextBlock{
+							tb := TextBlock{
 								Text: text,
 								X1:   x1, Y1: y1,
 								X2:   x2, Y2: y2,
-							})
-
-							paraTexts = append(paraTexts, text)
-							if firstWord {
-								paraX1, paraY1, paraX2, paraY2 = x1, y1, x2, y2
-								firstWord = false
-							} else {
-								if x1 < paraX1 {
-									paraX1 = x1
-								}
-								if y1 < paraY1 {
-									paraY1 = y1
-								}
-								if x2 > paraX2 {
-									paraX2 = x2
-								}
-								if y2 > paraY2 {
-									paraY2 = y2
-								}
 							}
+							pi.Blocks = append(pi.Blocks, tb)
+							paraWords = append(paraWords, tb)
 						}
 
-						// 複数単語からなるパラグラフは結合テキストもブロックとして追加する。
-						// Vision API が「主食」「バターロール」のように分割した場合でも
-						// 「主食バターロール」というターゲットにマッチさせるため。
-						if len(paraTexts) > 1 {
-							pi.Blocks = append(pi.Blocks, TextBlock{
-								Text: strings.Join(paraTexts, ""),
-								X1:   paraX1, Y1: paraY1,
-								X2:   paraX2, Y2: paraY2,
-							})
+						// 複数単語からなるパラグラフはパラグラフ構造として保存する。
+						// 「主食バターロール」のように Vision API が複数単語に分割したターゲットを
+						// ProcessPDF 内でスライディングウィンドウ完全一致マッチングで検出するため。
+						if len(paraWords) > 1 {
+							pi.Paragraphs = append(pi.Paragraphs, ParagraphInfo{Words: paraWords})
 						}
 					}
 				}
