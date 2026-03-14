@@ -27,6 +27,12 @@ func ProcessPDF(pdfBytes []byte, pages []PageInfo, target string) ([]byte, error
 	// ページ番号 → アノテーション のマップを構築して一括追加に備える。
 	annotationsMap := make(map[int][]model.AnnotationRenderer)
 
+	targets := splitTargets(target)
+	slog.Info("ProcessPDF start",
+		"page_count", len(pages),
+		"targets", targets,
+	)
+
 	for pageIdx, page := range pages {
 		if pageIdx >= len(dims) {
 			break
@@ -34,7 +40,17 @@ func ProcessPDF(pdfBytes []byte, pages []PageInfo, target string) ([]byte, error
 		pdfW := dims[pageIdx].Width
 		pdfH := dims[pageIdx].Height
 
+		slog.Info("processing page",
+			"page", pageIdx+1,
+			"image_w", page.Width,
+			"image_h", page.Height,
+			"pdf_w", pdfW,
+			"pdf_h", pdfH,
+			"block_count", len(page.Blocks),
+		)
+
 		if page.Width == 0 || page.Height == 0 {
+			slog.Warn("skipping page: zero image dimensions", "page", pageIdx+1)
 			continue
 		}
 		scaleX := pdfW / float64(page.Width)
@@ -42,8 +58,8 @@ func ProcessPDF(pdfBytes []byte, pages []PageInfo, target string) ([]byte, error
 
 		pageNum := pageIdx + 1 // pdfcpu はページ番号が 1 始まり
 
-		targets := splitTargets(target)
 		for _, block := range page.Blocks {
+			slog.Debug("checking block", "page", pageNum, "text", block.Text)
 			if !matchesAnyTarget(block.Text, targets) {
 				continue
 			}
@@ -81,6 +97,7 @@ func ProcessPDF(pdfBytes []byte, pages []PageInfo, target string) ([]byte, error
 	}
 
 	if len(annotationsMap) == 0 {
+		slog.Warn("no highlights added: no text blocks matched any target")
 		return pdfBytes, nil
 	}
 

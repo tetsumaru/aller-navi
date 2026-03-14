@@ -3,6 +3,7 @@ package highlightpdf
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"strings"
 
 	vision "cloud.google.com/go/vision/v2/apiv1"
@@ -80,6 +81,11 @@ func DetectText(ctx context.Context, pdfBytes []byte) ([]PageInfo, error) {
 							continue
 						}
 						x1, y1, x2, y2 := polyBounds(para.GetBoundingBox(), pi.Width, pi.Height)
+						slog.Debug("detected paragraph",
+							"page", len(pages)+1,
+							"text", text,
+							"bbox", fmt.Sprintf("(%.0f,%.0f)-(%.0f,%.0f)", x1, y1, x2, y2),
+						)
 						pi.Blocks = append(pi.Blocks, TextBlock{
 							Text: text,
 							X1:   x1, Y1: y1,
@@ -88,6 +94,12 @@ func DetectText(ctx context.Context, pdfBytes []byte) ([]PageInfo, error) {
 					}
 				}
 
+				slog.Info("vision page detected",
+					"page", len(pages)+1,
+					"width", pi.Width,
+					"height", pi.Height,
+					"block_count", len(pi.Blocks),
+				)
 				pages = append(pages, pi)
 			}
 		}
