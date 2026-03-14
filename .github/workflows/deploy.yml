@@ -32,6 +32,7 @@ jobs:
           source_dir: functions/highlight-pdf
           entry_point: HighlightPDF
           ingress_settings: ALLOW_ALL
+          environment_variables: FIRESTORE_DATABASE_ID=${{ secrets.FIRESTORE_DATABASE_ID }}
 
   deploy-register-allergen:
     name: register-allergen をデプロイ
@@ -58,6 +59,7 @@ jobs:
           source_dir: functions/highlight-pdf
           entry_point: RegisterAllergen
           ingress_settings: ALLOW_ALL
+          environment_variables: FIRESTORE_DATABASE_ID=${{ secrets.FIRESTORE_DATABASE_ID }}
 
   deploy-linebot:
     name: linebot をデプロイ
