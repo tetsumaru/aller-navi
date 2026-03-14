@@ -59,7 +59,8 @@ gcloud functions deploy highlight-pdf \
 ## PR・コミュニケーション言語
 
 **PR のタイトルおよび本文は必ず日本語で記述すること。**
-詳細フォーマットは `rules/git.md` の「PR の言語」セクションを参照。
+**Claude はすべての回答・説明を日本語で行うこと。英語での回答は禁止。**
+詳細は `rules/language.md` を参照。
 
 ## ルール
 
@@ -69,3 +70,4 @@ gcloud functions deploy highlight-pdf \
 - `rules/api.md` — API 仕様
 - `rules/coding-style.md` — コーディング規約
 - `rules/git.md` — Git ワークフロー
+- `rules/language.md` — 言語ルール（常に日本語で回答すること）
