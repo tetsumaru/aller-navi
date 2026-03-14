@@ -20,21 +20,28 @@
 
 ## 概要
 
-給食・保育園のメニュー PDF にアレルゲン情報をハイライトして返す Google Cloud Functions サービス。
+給食・保育園のメニュー PDF にアレルゲン情報をハイライトして LINE で返す Google Cloud サービス。
 
 ## サービス構成
 
 - **functions/highlight-pdf** — PDF にハイライトを追加する HTTP Cloud Function
-  - 言語: Go
+  - 言語: Go 1.26
   - 外部サービス: Google Cloud Vision API (Document Text Detection), Cloud Firestore
   - PDF 操作: pdfcpu (pure Go)
   - ハイライト対象: Firestore `users/{user_id}.target` フィールドの文字列
+  - エンドポイント: `HighlightPDF`, `RegisterAllergen`
+
+- **functions/linebot** — LINE Messaging API Webhook を受け取る Cloud Run サービス
+  - 言語: Go 1.26 + Docker (Ghostscript 同梱)
+  - PDF を受け取り、highlight-pdf を呼び出してハイライト済み画像を LINE に返信
+  - テキスト受信時はアレルゲン情報を register-allergen 経由で Firestore に登録
 
 ## 開発環境
 
-- Go 1.21+
+- Go 1.26+
 - Google Cloud SDK (`gcloud` コマンド)
-- Cloud Vision API および Cloud Firestore が有効な GCP プロジェクト
+- Cloud Vision API・Cloud Firestore・Cloud Storage が有効な GCP プロジェクト
+- Docker (linebot のビルド・実行時)
 
 ## コマンド
 
@@ -44,13 +51,15 @@ cd functions/highlight-pdf && go test ./...
 
 # ビルド確認
 cd functions/highlight-pdf && go build ./...
+cd functions/linebot && go build ./...
 
-# ローカル起動
+# ローカル起動 (highlight-pdf)
 cd functions/highlight-pdf && go run ./cmd/main.go
 
-# デプロイ
+# デプロイ (CI/CD — main ブランチ push で自動実行)
+# 手動デプロイは README.md を参照
 gcloud functions deploy highlight-pdf \
-  --runtime go121 \
+  --runtime go126 \
   --trigger-http \
   --allow-unauthenticated \
   --region asia-northeast1
