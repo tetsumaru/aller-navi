@@ -76,6 +76,10 @@ func DetectText(ctx context.Context, pdfBytes []byte) ([]PageInfo, error) {
 
 				for _, block := range page.GetBlocks() {
 					for _, para := range block.GetParagraphs() {
+						var paraTexts []string
+						var paraX1, paraY1, paraX2, paraY2 float64
+						firstWord := true
+
 						for _, word := range para.GetWords() {
 							text := extractWordText(word)
 							if text == "" {
@@ -91,6 +95,36 @@ func DetectText(ctx context.Context, pdfBytes []byte) ([]PageInfo, error) {
 								Text: text,
 								X1:   x1, Y1: y1,
 								X2:   x2, Y2: y2,
+							})
+
+							paraTexts = append(paraTexts, text)
+							if firstWord {
+								paraX1, paraY1, paraX2, paraY2 = x1, y1, x2, y2
+								firstWord = false
+							} else {
+								if x1 < paraX1 {
+									paraX1 = x1
+								}
+								if y1 < paraY1 {
+									paraY1 = y1
+								}
+								if x2 > paraX2 {
+									paraX2 = x2
+								}
+								if y2 > paraY2 {
+									paraY2 = y2
+								}
+							}
+						}
+
+						// 複数単語からなるパラグラフは結合テキストもブロックとして追加する。
+						// Vision API が「主食」「バターロール」のように分割した場合でも
+						// 「主食バターロール」というターゲットにマッチさせるため。
+						if len(paraTexts) > 1 {
+							pi.Blocks = append(pi.Blocks, TextBlock{
+								Text: strings.Join(paraTexts, ""),
+								X1:   paraX1, Y1: paraY1,
+								X2:   paraX2, Y2: paraY2,
 							})
 						}
 					}
