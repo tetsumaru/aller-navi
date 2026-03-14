@@ -190,9 +190,9 @@ func ProcessPDF(pdfBytes []byte, pages []PageInfo, target string) ([]byte, error
 // writeHighlightPDF はページサイズと矩形リストから黄色矩形を描画する最小限の PDF を生成し、
 // 一時ファイルに書き出してそのパスを返します。
 func writeHighlightPDF(width, height float64, rects []highlightRect) (string, error) {
-	// コンテンツストリーム: 黄色（R=1.0 G=0.953 B=0）で矩形を塗りつぶす
+	// コンテンツストリーム: 水色（R=0.529 G=0.808 B=0.922）で矩形を塗りつぶす
 	var cs bytes.Buffer
-	cs.WriteString("q\n1.000 0.953 0.000 rg\n")
+	cs.WriteString("q\n0.529 0.808 0.922 rg\n")
 	for _, r := range rects {
 		fmt.Fprintf(&cs, "%.3f %.3f %.3f %.3f re\n", r.x, r.y, r.w, r.h)
 	}
