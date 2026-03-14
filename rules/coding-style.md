@@ -30,12 +30,29 @@ slog.Error("vision API failed", "err", err)
 
 ## パッケージ構成
 
-- 1 つの Cloud Function = 1 パッケージ (`functions/highlight-pdf/`)
-- 役割ごとにファイルを分割:
-  - `main.go` — 関数の登録 (`init()`)
-  - `handler.go` — HTTP リクエスト/レスポンス処理
-  - `vision.go` — Cloud Vision API クライアント
-  - `pdf.go` — PDF 操作 (ハイライト + ヘッダー)
+### highlight-pdf (`functions/highlight-pdf/`)
+
+1 つの Cloud Functions パッケージに複数のエントリーポイントを持つ。
+
+- `main.go` — 関数の登録 (`init()`) — `HighlightPDF`, `RegisterAllergen` を登録
+- `handler.go` — `HighlightPDF` の HTTP リクエスト/レスポンス処理
+- `register_handler.go` — `RegisterAllergen` の HTTP リクエスト/レスポンス処理
+- `vision.go` — Cloud Vision API クライアント
+- `pdf.go` — PDF 操作 (ハイライト)
+- `firestore.go` — Firestore クライアント (`GetUserTarget`, `SetUserTarget`)
+- `cmd/main.go` — ローカル起動用エントリーポイント
+
+### linebot (`functions/linebot/`)
+
+Cloud Run 上で動作する LINE Webhook サービス。
+
+- `main.go` — 関数の登録 (`init()`)
+- `handler.go` — LINE Webhook イベント処理
+- `highlight.go` — highlight-pdf 関数の呼び出し
+- `register.go` — register-allergen 関数の呼び出し
+- `convert.go` — PDF → JPEG 変換 (Ghostscript)
+- `storage.go` — GCS への画像アップロード
+- `cmd/main.go` — ローカル起動用エントリーポイント
 
 ## HTTP ハンドラ
 
